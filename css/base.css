@@ -1,0 +1,178 @@
+/* ============================================================
+   基础：reset、容器、页头、Tab Bar
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  transition: background-color .3s var(--ease-out), color .3s var(--ease-out);
+}
+
+/* 数字等宽，防止计时器跳动 */
+.tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+button, input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+a { color: inherit; text-decoration: none; }
+
+::selection { background: var(--accent); color: #fff; }
+
+/* ---------- 手机画布 ---------- */
+
+.phone {
+  max-width: var(--phone-max);
+  margin: 0 auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  position: relative;
+  padding-bottom: calc(var(--tab-h) + 28px + env(safe-area-inset-bottom, 0px));
+}
+
+.view {
+  padding: 0 16px 24px;
+  animation: viewIn .34s var(--ease-out) both;
+}
+
+@keyframes viewIn {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- 页头 ---------- */
+
+.page-head {
+  padding: 24px 0 12px;
+}
+
+.page-head .eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 4px;
+}
+
+.page-head h1 {
+  font-size: 34px;
+  line-height: 1.14;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  margin: 0;
+}
+
+.page-head .sub {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+/* 分组标题（iOS inset-grouped 风格） */
+.section-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--text-2);
+  text-transform: uppercase;
+  margin: 26px 4px 9px;
+}
+
+.section-label:first-child { margin-top: 6px; }
+
+/* ---------- Tab Bar ---------- */
+
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--phone-max);
+  height: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: center;
+  background: color-mix(in srgb, var(--card) 78%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  backdrop-filter: saturate(180%) blur(24px);
+  border-top: .5px solid var(--separator-soft);
+  z-index: 40;
+}
+
+/* 不支持 color-mix 的兜底 */
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  .tabbar { background: var(--card); }
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 100%;
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  transition: color .2s var(--ease-out), transform .2s var(--ease-spring);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tab svg {
+  width: 25px;
+  height: 25px;
+  transition: transform .28s var(--ease-spring);
+}
+
+.tab .tab-fill { opacity: 0; transition: opacity .2s var(--ease-out); }
+
+.tab:active { transform: scale(.93); }
+
+.tab.active { color: var(--accent); }
+.tab.active .tab-fill { opacity: 1; }
+
+/* ---------- 响应式 ---------- */
+
+@media (max-width: 460px) {
+  .view { padding-left: 14px; padding-right: 14px; }
+  .page-head h1 { font-size: 31px; }
+}
+
+@media (min-width: 900px) {
+  body { background: var(--bg); }
+}
+
+/* ---------- 无障碍：减少动效 ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="description" content="记录每一次破戒的诱因，让数据替你找规律。">
+<!-- 添加到主屏幕后全屏显示（iOS / Android） -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="自律追踪">
+<title>自律追踪</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/desktop.css">
+</head>
+<body>
+
+<div class="phone">
+  <main id="view" class="view" role="main"></main>
+</div>
+
+<nav class="tabbar" id="tabbar" role="tablist" aria-label="主导航">
+  <a class="tab" href="#/home" data-tab="home" role="tab">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" fill="currentColor" class="tab-fill"/></svg>
+    <span>首页</span>
+  </a>
+  <a class="tab" href="#/stats" data-tab="stats" role="tab">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.2" y="12.5" width="4.4" height="8.3" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="9.8" y="7.5" width="4.4" height="13.3" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="16.4" y="3.2" width="4.4" height="17.6" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+    <span>统计</span>
+  </a>
+  <a class="tab" href="#/timeline" data-tab="timeline" role="tab">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.6v16.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="6" cy="7.4" r="2.1" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="6" cy="16.6" r="2.1" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M11 7.4h9M11 16.6h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    <span>时间线</span>
+  </a>
+  <a class="tab" href="#/settings" data-tab="settings" role="tab">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="9" cy="7" r="2.1" fill="currentColor" class="tab-fill"/><circle cx="15" cy="12" r="2.1" fill="currentColor" class="tab-fill"/><circle cx="8" cy="17" r="2.1" fill="currentColor" class="tab-fill"/></svg>
+    <span>设置</span>
+  </a>
+</nav>
+
+<div id="overlay-root"></div>
+<div id="toast-root" class="toast-root" aria-live="polite"></div>
+
+<!-- 顺序加载：不使用 ES Module，保证 file:// 双击可用 -->
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/views-home.js"></script>
+<script src="js/views-stats.js"></script>
+<script src="js/views-timeline.js"></script>
+<script src="js/views-settings.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
