@@ -9,6 +9,11 @@
    · 所有领域函数都接受 hid：'all' = 全部项目合计，其余 = 某项目 id
      不传 hid 时默认当前活跃项目（第一个未归档项目）—— 保持旧调用可用
    · settings.scope  统计页 / 时间线的当前筛选（'all' 或 habit id）
+
+   标签口径（1.2.0 起）：
+   · 原因（REASONS）和场景（PLACES）都是内置表 + customXxx 自己加的，
+     内置的可以删（记进 hiddenXxx，可恢复默认）
+   · 删标签只动「可选项」，relapses 里已存的字符串永不改写
    ============================================================ */
 
 (function (global) {
@@ -138,7 +143,12 @@
       }],
       relapses: [],
       milestones: MILESTONES.slice(),
+      // 标签（原因 / 场景）都可自由增删：
+      // customXxx = 自己加的；hiddenXxx = 被删掉的内置标签（可「恢复默认」）
       customReasons: [],
+      customPlaces: [],
+      hiddenReasons: [],
+      hiddenPlaces: [],
       settings: {
         theme: 'auto',
         onboarded: false,
@@ -153,6 +163,34 @@
   var state = null;
 
   function isObj(v) { return v && typeof v === 'object' && !Array.isArray(v); }
+
+  /* ---------------- 标签清洗 ----------------
+     旧数据只有 customReasons，没有 customPlaces / hiddenXxx，
+     所以这三项一定走「缺失就补默认」的路径，不会把老存档读坏。
+     -------------------------------------------------- */
+
+  /** 自定义标签：去空白、限长 24、去重、丢掉与内置重名的 */
+  function cleanCustom(arr, base) {
+    var out = [];
+    (Array.isArray(arr) ? arr : []).forEach(function (t) {
+      if (typeof t !== 'string') return;
+      var v = t.trim().slice(0, 24);
+      if (!v || base.indexOf(v) >= 0 || out.indexOf(v) >= 0) return;
+      out.push(v);
+    });
+    return out;
+  }
+
+  /** 被隐藏的内置标签：只保留确实属于内置表的值 */
+  function cleanHidden(arr, base) {
+    var out = [];
+    (Array.isArray(arr) ? arr : []).forEach(function (t) {
+      if (typeof t !== 'string') return;
+      var v = t.trim();
+      if (base.indexOf(v) >= 0 && out.indexOf(v) < 0) out.push(v);
+    });
+    return out;
+  }
 
   function normalize(raw) {
     var base = defaultState();
@@ -218,9 +256,10 @@
       habits: habits,
       relapses: relapses,
       milestones: milestones.length ? milestones : base.milestones,
-      customReasons: Array.isArray(raw.customReasons)
-        ? raw.customReasons.filter(function (t) { return typeof t === 'string' && t; })
-        : [],
+      customReasons: cleanCustom(raw.customReasons, REASONS),
+      customPlaces: cleanCustom(raw.customPlaces, PLACES),
+      hiddenReasons: cleanHidden(raw.hiddenReasons, REASONS),
+      hiddenPlaces: cleanHidden(raw.hiddenPlaces, PLACES),
       settings: settings
     };
   }
@@ -705,19 +744,96 @@
     return null;
   }
 
-  function addCustomReason(tag) {
-    var t = String(tag || '').trim();
-    if (!t) return false;
-    if (REASONS.indexOf(t) >= 0) return false;
+  /* ---------------- 标签：原因 / 场景（可自由增删） ----------------
+     · 内置标签删掉时不真删，收进 hiddenXxx —— 随时能「恢复默认」
+     · 删除只影响「可选项」，已经存进 relapses 的字符串一律不动，
+       所以历史记录、统计、时间线都照旧（统计只认记录里存下的文本）
+     -------------------------------------------------------------- */
+
+  var LABEL_FIELDS = {
+    reason: { base: REASONS, custom: 'customReasons', hidden: 'hiddenReasons' },
+    place: { base: PLACES, custom: 'customPlaces', hidden: 'hiddenPlaces' }
+  };
+
+  function labelFields(kind) {
+    return LABEL_FIELDS[kind === 'place' ? 'place' : 'reason'];
+  }
+
+  /** 当前可选的原因标签 = 内置（未被删掉的）+ 自己加的 */
+  function allReasons() {
     var s = get();
-    if (s.customReasons.indexOf(t) >= 0) return false;
-    s.customReasons.push(t);
+    return REASONS.filter(function (t) { return s.hiddenReasons.indexOf(t) < 0; })
+      .concat(s.customReasons);
+  }
+
+  /** 当前可选的场景标签 = 内置（未被删掉的）+ 自己加的 */
+  function allPlaces() {
+    var s = get();
+    return PLACES.filter(function (t) { return s.hiddenPlaces.indexOf(t) < 0; })
+      .concat(s.customPlaces);
+  }
+
+  /**
+   * kind: 'reason' | 'place'
+   * 返回 ''（空输入）| 'exists'（已经有了）| 'restored'（内置被删过，放回来）| 'added'
+   */
+  function addLabel(kind, raw) {
+    var f = labelFields(kind);
+    var s = get();
+    var v = String(raw || '').trim().slice(0, 24);
+    if (!v) return '';
+
+    if (f.base.indexOf(v) >= 0) {
+      var hi = s[f.hidden].indexOf(v);
+      if (hi < 0) return 'exists';
+      s[f.hidden].splice(hi, 1);
+      save();
+      return 'restored';
+    }
+    if (s[f.custom].indexOf(v) >= 0) return 'exists';
+    s[f.custom].push(v);
+    save();
+    return 'added';
+  }
+
+  /** 删掉一个可选项：内置的收进 hidden（可恢复），自定义的直接删。历史记录不受影响 */
+  function removeLabel(kind, raw) {
+    var f = labelFields(kind);
+    var s = get();
+    var v = String(raw || '').trim();
+    if (!v) return false;
+
+    if (f.base.indexOf(v) >= 0) {
+      if (s[f.hidden].indexOf(v) >= 0) return false;
+      s[f.hidden].push(v);
+    } else {
+      var ci = s[f.custom].indexOf(v);
+      if (ci < 0) return false;
+      s[f.custom].splice(ci, 1);
+    }
     save();
     return true;
   }
 
-  function allReasons() {
-    return REASONS.concat(get().customReasons);
+  /** 恢复默认标签（自定义的不动），返回放回来的个数 */
+  function resetLabels(kind) {
+    var f = labelFields(kind);
+    var s = get();
+    var n = s[f.hidden].length;
+    s[f.hidden] = [];
+    save();
+    return n;
+  }
+
+  /** 被删掉的内置标签 —— 界面据此决定要不要显示「恢复默认」 */
+  function hiddenLabels(kind) {
+    return get()[labelFields(kind).hidden].slice();
+  }
+
+  /** 旧接口：加一个自定义原因，返回是否新增 / 恢复成功 */
+  function addCustomReason(tag) {
+    var r = addLabel('reason', tag);
+    return r === 'added' || r === 'restored';
   }
 
   function setTheme(theme) {
@@ -875,6 +991,11 @@
     updateRelapse: updateRelapse,
     addCustomReason: addCustomReason,
     allReasons: allReasons,
+    allPlaces: allPlaces,
+    addLabel: addLabel,
+    removeLabel: removeLabel,
+    resetLabels: resetLabels,
+    hiddenLabels: hiddenLabels,
 
     // 导入导出
     exportJSON: exportJSON,

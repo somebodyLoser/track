@@ -199,6 +199,144 @@
     return api;
   }
 
+  /* ============================================================
+     标签管理 —— 原因 / 场景的选项都能自由增删
+     删内置的只是「藏起来」，随时能恢复；删自己加的才是真删。
+     两种删除都只影响选项，已经记录在案的文字不受影响。
+     ============================================================ */
+
+  function openLabelManager(kind) {
+    var st = S();
+    var ui = U();
+    var isPlace = kind === 'place';
+
+    var body = ui.el('div');
+
+    function paint() {
+      ui.clear(body);
+
+      var list = isPlace ? st.allPlaces() : st.allReasons();
+      var hidden = st.hiddenLabels(kind);
+      var builtinCount = isPlace ? st.PLACES.length : st.REASONS.length;
+
+      body.appendChild(ui.el('div', {
+        class: 'hint',
+        style: { 'text-align': 'left' },
+        text: isPlace
+          ? '这些是记录「当时在哪」时能点的选项。删掉只是不再显示，以前记录里的场景照旧保留。'
+          : '这些是记录「这次是怎么了」时能点的选项。删掉只是不再显示，以前记录里的原因照旧保留。'
+      }));
+
+      body.appendChild(ui.el('div', { class: 'sheet-label', text: '现在能选的（' + list.length + '）' }));
+
+      if (list.length) {
+        var wrap = ui.el('div', { class: 'pills del' });
+        list.forEach(function (label) {
+          var isBuiltin = builtinCount && (isPlace ? st.PLACES : st.REASONS).indexOf(label) >= 0;
+          wrap.appendChild(ui.el('button', {
+            class: 'pill',
+            type: 'button',
+            text: label,
+            on: {
+              click: function () {
+                st.removeLabel(kind, label);
+                paint();
+                ui.toast('已删掉「' + label + '」' + (isBuiltin ? '，点「恢复默认」能找回来' : ''));
+              }
+            }
+          }));
+        });
+        body.appendChild(wrap);
+      } else {
+        body.appendChild(ui.el('div', { class: 'hint', text: '一个都不剩了，在下面加一个吧。' }));
+      }
+
+      body.appendChild(ui.el('div', { class: 'sheet-label', text: '自己加一个' }));
+
+      var input = ui.el('input', {
+        class: 'input',
+        type: 'text',
+        maxlength: '24',
+        placeholder: isPlace ? '比如：卧室书桌、地铁上…' : '比如：加班到很晚、跟他吵完架…'
+      });
+
+      function submit() {
+        var v = input.value.trim();
+        if (!v) { input.focus(); return; }
+        var r = st.addLabel(kind, v);
+        if (!r) return;
+        input.value = '';
+        paint();
+        ui.toast(r === 'exists' ? '「' + v + '」已经在了'
+          : r === 'restored' ? '已放回「' + v + '」'
+          : '已加上「' + v + '」');
+      }
+
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      });
+
+      body.appendChild(ui.el('div', { style: { display: 'flex', gap: '8px' } }, [
+        input,
+        ui.el('button', {
+          class: 'btn btn-soft btn-sm',
+          type: 'button',
+          text: '添加',
+          on: { click: submit }
+        })
+      ]));
+
+      if (hidden.length) {
+        body.appendChild(ui.el('div', {
+          class: 'sheet-label',
+          text: '删掉的内置标签（' + hidden.length + '）'
+        }));
+        body.appendChild(ui.el('div', { class: 'pills' }, hidden.map(function (label) {
+          return ui.el('button', {
+            class: 'pill sm',
+            type: 'button',
+            text: label,
+            on: {
+              click: function () {
+                st.addLabel(kind, label);
+                paint();
+                ui.toast('已放回「' + label + '」');
+              }
+            }
+          });
+        })));
+        body.appendChild(ui.el('button', {
+          class: 'btn btn-block btn-soft',
+          type: 'button',
+          text: '恢复全部默认标签',
+          style: { 'margin-top': '12px' },
+          on: {
+            click: function () {
+              st.resetLabels(kind);
+              paint();
+              ui.toast('内置标签都放回来了');
+            }
+          }
+        }));
+      }
+    }
+
+    paint();
+
+    return ui.sheet({
+      title: isPlace ? '场景标签' : '原因标签',
+      leftText: null,
+      rightText: '完成',
+      body: body,
+      onRight: function () {
+        rerender();
+      },
+      onClose: function () {
+        rerender();
+      }
+    });
+  }
+
   /* ---------------- 数据 ---------------- */
 
   /** 「上次备份」那一行显示什么 */
@@ -386,7 +524,8 @@
         ui.el('div', { class: 'section-label', text: '数据' }),
         group([
           row({ main: '破戒记录', value: st.relapseCount('all') + ' 条' }),
-          row({ main: '自定义原因', value: s.customReasons.length + ' 个' }),
+          row({ main: '自定义原因', value: s.customReasons.length + ' 个', chevron: true, tappable: true, on: { click: function () { openLabelManager('reason'); } } }),
+          row({ main: '自定义场景', value: s.customPlaces.length + ' 个', chevron: true, tappable: true, on: { click: function () { openLabelManager('place'); } } }),
           row({ main: '上次备份', value: backupText(st) }),
           row({ main: '导出备份', chevron: true, tappable: true, on: { click: doExport } }),
           row({ main: '导入备份', chevron: true, tappable: true, on: { click: doImport } }),
@@ -395,7 +534,7 @@
 
         ui.el('div', { class: 'section-label', text: '关于' }),
         group([
-          row({ main: '版本', value: '1.1.0' }),
+          row({ main: '版本', value: '1.2.0' }),
           row({
             main: '日期计算自检',
             chevron: true,

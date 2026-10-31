@@ -387,6 +387,8 @@
     };
 
     var step = 1;
+    /* 每一步各自的「管理」开关：管理模式下点标签 = 删掉它 */
+    var manage = { reason: false, place: false };
     var streakBefore = st.currentStreakDays(hid);
 
     var bodyNode = ui.el('div');
@@ -435,6 +437,98 @@
       if (bodyNode.parentNode) bodyNode.parentNode.scrollTop = 0;
     }
 
+    /* ---- 标签区的公共零件（原因 / 场景共用） ---- */
+
+    /** 标题行：左边一句说明，右边「恢复默认 / 管理」 */
+    function labelHeadRow(text, kind) {
+      var acts = ui.el('div', { class: 'label-acts' });
+
+      if (st.hiddenLabels(kind).length) {
+        acts.appendChild(ui.el('button', {
+          class: 'link-btn',
+          type: 'button',
+          text: '恢复默认',
+          on: {
+            click: function () {
+              st.resetLabels(kind);
+              paint();
+              ui.toast('内置标签都放回来了');
+            }
+          }
+        }));
+      }
+
+      acts.appendChild(ui.el('button', {
+        class: 'link-btn' + (manage[kind] ? ' on' : ''),
+        type: 'button',
+        text: manage[kind] ? '完成' : '管理',
+        on: {
+          click: function () {
+            manage[kind] = !manage[kind];
+            paint();
+          }
+        }
+      }));
+
+      return ui.el('div', { class: 'label-row' }, [
+        ui.el('div', { class: 'sheet-label', text: text }),
+        acts
+      ]);
+    }
+
+    /** 管理模式下的一句提示，避免误删了不知道发生了什么 */
+    function manageHint(kind) {
+      if (!manage[kind]) return null;
+      return ui.el('div', {
+        class: 'hint',
+        style: { 'text-align': 'left', 'margin-top': '10px' },
+        text: '现在点一下标签就是把它删掉。以前的记录里已经存下的标签不会跟着变。'
+      });
+    }
+
+    /** 加一个标签的输入行 */
+    function labelAddRow(kind, placeholder) {
+      var input = ui.el('input', {
+        class: 'input',
+        type: 'text',
+        placeholder: placeholder,
+        maxlength: '24'
+      });
+
+      var addBtn = ui.el('button', {
+        class: 'btn btn-soft btn-sm',
+        type: 'button',
+        text: '添加',
+        on: { click: function () { submit(); } }
+      });
+
+      function submit() {
+        var v = input.value.trim();
+        if (!v) { input.focus(); return; }
+
+        var r = st.addLabel(kind, v);
+        if (!r) return;
+
+        if (kind === 'reason') {
+          if (draft.reasonTags.indexOf(v) < 0) draft.reasonTags.push(v);
+        } else {
+          draft.place = v;
+        }
+
+        input.value = '';
+        paint();
+        ui.toast(r === 'exists' ? '「' + v + '」已经在了'
+          : r === 'restored' ? '已放回「' + v + '」'
+          : '已加上「' + v + '」');
+      }
+
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      });
+
+      return ui.el('div', { style: { display: 'flex', gap: '8px' } }, [input, addBtn]);
+    }
+
     /* ---- 第一屏：原因标签 ---- */
 
     function buildStepReasons() {
@@ -449,9 +543,9 @@
         ]));
       }
 
-      wrap.appendChild(ui.el('div', { class: 'sheet-label', text: '可以多选。哪几个是真的？' }));
+      wrap.appendChild(labelHeadRow('可以多选。哪几个是真的？', 'reason'));
 
-      var pills = ui.el('div', { class: 'pills' });
+      var pills = ui.el('div', { class: 'pills' + (manage.reason ? ' del' : '') });
 
       st.allReasons().forEach(function (tag) {
         var p = ui.el('button', {
@@ -460,6 +554,13 @@
           text: tag,
           on: {
             click: function () {
+              if (manage.reason) {
+                st.removeLabel('reason', tag);
+                draft.reasonTags = draft.reasonTags.filter(function (t) { return t !== tag; });
+                paint();
+                ui.toast('已删掉「' + tag + '」');
+                return;
+              }
               var i = draft.reasonTags.indexOf(tag);
               if (i >= 0) {
                 draft.reasonTags.splice(i, 1);
@@ -474,40 +575,20 @@
         pills.appendChild(p);
       });
 
+      if (!pills.children.length) {
+        pills.appendChild(ui.el('div', {
+          class: 'hint',
+          text: '一个都不剩了 —— 在下面加一个，或者点上面的「恢复默认」。'
+        }));
+      }
+
       wrap.appendChild(pills);
 
-      // 自定义标签
+      var rHint = manageHint('reason');
+      if (rHint) wrap.appendChild(rHint);
+
       wrap.appendChild(ui.el('div', { class: 'sheet-label', text: '都不贴切？自己写一个' }));
-
-      var input = ui.el('input', {
-        class: 'input',
-        type: 'text',
-        placeholder: '比如：加班到很晚、跟他吵完架…',
-        maxlength: '24'
-      });
-
-      var addBtn = ui.el('button', {
-        class: 'btn btn-soft btn-sm',
-        type: 'button',
-        text: '添加',
-        on: {
-          click: function () {
-            var v = input.value.trim();
-            if (!v) return;
-            st.addCustomReason(v);
-            if (draft.reasonTags.indexOf(v) < 0) draft.reasonTags.push(v);
-            input.value = '';
-            paint();
-            ui.toast('已添加「' + v + '」');
-          }
-        }
-      });
-
-      input.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') { e.preventDefault(); addBtn.click(); }
-      });
-
-      wrap.appendChild(ui.el('div', { style: { display: 'flex', gap: '8px' } }, [input, addBtn]));
+      wrap.appendChild(labelAddRow('reason', '比如：加班到很晚、跟他吵完架…'));
 
       wrap.appendChild(ui.el('div', {
         class: 'hint',
@@ -529,16 +610,23 @@
         text: (multi && target ? target.name + ' · ' : '') + '这一次你坚持了 ' + streakBefore + ' 天'
       }));
 
-      wrap.appendChild(ui.el('div', { class: 'sheet-label', text: '当时在哪' }));
+      wrap.appendChild(labelHeadRow('当时在哪', 'place'));
 
-      var placePills = ui.el('div', { class: 'pills' });
-      st.PLACES.forEach(function (pl) {
+      var placePills = ui.el('div', { class: 'pills' + (manage.place ? ' del' : '') });
+      st.allPlaces().forEach(function (pl) {
         var p = ui.el('button', {
           class: 'pill' + (draft.place === pl ? ' on' : ''),
           type: 'button',
           text: pl,
           on: {
             click: function () {
+              if (manage.place) {
+                if (draft.place === pl) draft.place = '';
+                st.removeLabel('place', pl);
+                paint();
+                ui.toast('已删掉「' + pl + '」');
+                return;
+              }
               draft.place = draft.place === pl ? '' : pl;
               Array.prototype.forEach.call(placePills.children, function (c) {
                 c.classList.toggle('on', c.textContent === draft.place);
@@ -548,7 +636,18 @@
         });
         placePills.appendChild(p);
       });
+      if (!placePills.children.length) {
+        placePills.appendChild(ui.el('div', {
+          class: 'hint',
+          text: '一个都不剩了 —— 在下面加一个，或者点上面的「恢复默认」。'
+        }));
+      }
       wrap.appendChild(placePills);
+
+      var pHint = manageHint('place');
+      if (pHint) wrap.appendChild(pHint);
+
+      wrap.appendChild(labelAddRow('place', '比如：卧室书桌、地铁上、朋友家…'));
 
       wrap.appendChild(ui.el('div', { class: 'sheet-label', text: '当时的心情' }));
 
