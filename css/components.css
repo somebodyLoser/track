@@ -363,6 +363,45 @@
 
 .sheet-label:first-child { margin-top: 4px; }
 
+/* 标签行：左边标题，右边「恢复默认 / 管理」 */
+.label-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.label-acts {
+  flex: none;
+  display: flex;
+  gap: 14px;
+  padding-bottom: 9px;
+}
+
+.link-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity .16s;
+}
+
+.link-btn:active { opacity: .5; }
+.link-btn.on { color: var(--text-2); }
+
+/* 管理模式：每个胶囊右侧长出一个 × */
+.pills.del .pill::after {
+  content: '×';
+  margin-left: 7px;
+  font-weight: 700;
+  opacity: .55;
+}
+
 /* 居中的告警对话框 */
 .overlay.center { align-items: center; padding: 24px; }
 
