@@ -733,8 +733,7 @@
   flex: none;
   width: 4px;
   border-radius: 2px;
-  background: var(--orange);
-  opacity: .85;
+  background: var(--fill-3);
 }
 
 .tl-body { flex: 1; min-width: 0; }
