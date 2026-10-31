@@ -17,7 +17,9 @@
 <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
 <link rel="manifest" href="manifest.json">
 <!-- 主屏冷启动的静态启动图：iOS 按设备像素挑一张，没匹配到就是白屏。
-     文件由 _dev/gen-splash.py 生成，尺寸 = CSS 尺寸 × device-pixel-ratio。 -->
+     文件由 _dev/gen-splash.py 生成，尺寸 = CSS 尺寸 × device-pixel-ratio。
+     注意：iOS 这条机制很不稳（要在「添加到主屏幕」那一刻抓取，之后改网页不重抓），
+     所以真正的启动画面是下面 #boot 那个自绘遮罩，这里是顺手留着的加分项。 -->
 <link rel="apple-touch-startup-image" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="splash/640x1136.png">
 <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="splash/750x1334.png">
 <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/1125x2436.png">
@@ -30,12 +32,48 @@
 <link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/1284x2778.png">
 <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/1290x2796.png">
 <link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="splash/1320x2868.png">
+<!-- 启动遮罩的关键样式内联在这里，且排在外链 CSS 之前：第一帧就得是它，不能是白屏 -->
+<style>
+  #boot {
+    position: fixed; inset: 0; z-index: 70;
+    display: grid; place-content: center; justify-items: center; gap: 16px;
+    background: #F2F2F7;
+    transition: opacity .3s ease;
+    /* JS 万一没跑起来（断网半截、脚本报错），1.8 秒后自己隐身，绝不留白屏 */
+    animation: boot-fallback 0s linear 1.8s forwards;
+  }
+  @keyframes boot-fallback { to { opacity: 0; visibility: hidden; } }
+  #boot.is-done { opacity: 0; pointer-events: none; }
+  #boot svg { width: 72px; height: 72px; color: #007AFF; }
+  #boot .boot-title {
+    font: 600 17px/1.2 -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    color: #1C1C1E; letter-spacing: .08em;
+  }
+  @media (prefers-color-scheme: dark) {
+    #boot { background: #000; }
+    #boot .boot-title { color: #F2F2F7; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #boot { transition: none; }
+  }
+</style>
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/desktop.css">
 </head>
 <body>
+
+<!-- 启动遮罩：页面自己画，不依赖 iOS 的系统启动图 -->
+<div id="boot" aria-hidden="true">
+  <svg viewBox="0 0 64 64" aria-hidden="true">
+    <circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-opacity=".22" stroke-width="4.2"/>
+    <path d="M32 6A26 26 0 1 1 23.96 56.72" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round"/>
+    <circle cx="32" cy="32" r="4.6" fill="currentColor"/>
+  </svg>
+  <div class="boot-title">自律追踪</div>
+</div>
+<script>window.__bootAt = (window.performance && window.performance.now) ? window.performance.now() : 0;</script>
 
 <div class="phone">
   <main id="view" class="view" role="main"></main>
