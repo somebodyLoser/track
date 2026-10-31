@@ -107,6 +107,19 @@
 - 别把策略改成 cache-first —— 那会永久卡在旧版，改完 push 都不生效
 - 本地双击 `index.html`（`file://`）不注册 SW，这是浏览器限制，不影响开发；想本地测 SW 就 `python -m http.server` 起一个
 
+### 主屏启动的那一两秒：启动图
+
+冷启动慢是 iOS 的税：点图标先要拉起一个独立 webview 进程（几百毫秒起），这段 HTML 还没开始跑，显示什么完全由系统决定 —— **没配启动图就是白屏**，看起来像卡死。
+
+所以配了 `splash/` 里的静态启动图（12 张，覆盖 SE ~ 16 Pro Max 的竖屏尺寸），外加 `icon-180.png` / `icon-192.png` / `icon-512.png` 三个 PNG 图标：
+
+- iOS **只认 PNG 格式的 apple-touch-icon**（180×180），喂 SVG 会退回「网页截图」当图标 —— 之前就是这个问题，顺手修了
+- 启动图尺寸必须等于「CSS 尺寸 × device-pixel-ratio」，`index.html` 里每条 `apple-touch-startup-image` 的媒体查询要和文件名严格对应，对不上 iOS 就不显示
+- 这些图不放进 SW 预缓存：启动图在页面加载之前就被系统取走了，service worker 根本拦不到，放进去只会白占配额
+- 重新生成：`python _dev/gen-splash.py`（改设计改脚本里那几个常量即可；用了系统的微软雅黑，换机器没这字体也能出图，排版略糙）
+
+启动图只解决「白屏看着慌」，消不掉那 1~2 秒本身。要真的更快，得动导航策略（现在是 network-first，每次冷启动都要等一次网络往返）—— 那是另一个取舍，改之前在这记一笔。
+
 ### 改了代码重新部署，数据会丢吗
 
 不会，只要**网址（域名）没变**。你的记录存在浏览器里、按网址区分，重新上传文件只是换掉文件，动不到记录。
@@ -122,6 +135,8 @@
 这意味着：
 
 - 换浏览器、换设备，数据不会跟过去（手机和电脑各存各的，不互通）
+- **主屏图标和 Safari 是两份数据**：iOS 把「添加到主屏幕」的应用当成独立 App，存储与 Safari 隔离（WebKit 官方口径是 by design）。只在加到主屏那一刻复制 Cookie，`localStorage` 不复制。所以认准一个入口记，别两头混记
+- **删主屏图标 ≈ 删 App，数据跟着走**：要删先「导出备份」
 - 清理浏览器数据（尤其「Cookie 和网站数据」）会把它一起清掉
 - 无痕窗口里的记录关掉就没了
 - **iOS 有个坑**：没「添加到主屏幕」的站点，Safari 在 7 天不访问后会清掉它的本地存储。加成主屏幕 App 后不受这条限制 —— 所以上面那步别省
@@ -136,7 +151,10 @@
 index.html            单页骨架 + 底部（宽屏是左侧）导航
 sw.js                 service worker：network-first，保证上传的新版能被手机拿到
 manifest.json         添加到主屏幕用的应用信息
-icon.svg              应用图标
+icon.svg              应用图标（浏览器标签用）
+icon-180.png          主屏图标（iOS 只认这个尺寸、这个格式）
+icon-192/512.png      manifest 用的 PNG 图标（Android / 可安装性）
+splash/               12 张冷启动启动图，按机型像素尺寸区分
 css/tokens.css        颜色、圆角、动效曲线等设计令牌（亮/暗两套）
 css/base.css          布局：手机比例居中列、页面进入动画
 css/components.css    卡片、按钮、标签、Sheet、图表、时间线等组件样式
@@ -172,7 +190,7 @@ node _dev/test-store.js     # 数据层：日期口径、连续天数、统计�
 node _dev/test-ui.js        # 界面层：四个页面渲染、记录全流程、删除、设置编辑、空状态（75 项）
 node _dev/test-multi.js     # 多项目：增删改归档、记录归属、范围过滤、统计隔离、旧数据迁移（186 项）
 node _dev/test-labels.js    # 标签增删：自定义/内置原因与场景的加、删、恢复、脏数据、历史记录不受影响（81 项）
-node _dev/check-desktop.js  # 分栏结构、手机顺序、备份提醒、manifest/图标、SW 注册与预缓存（62 项）
+node _dev/check-desktop.js  # 分栏结构、手机顺序、备份提醒、manifest/图标、SW 注册与预缓存、启动图（72 项）
 node _dev/check-css.js      # 静态：CSS 括号配平、JS 里用到的 class 是否有定义
 node _dev/check-fresh.js    # 全新用户（localStorage 为空）首次打开看到什么
 ```
@@ -189,3 +207,9 @@ python _dev/pwa-probe.py                       # 需要 python + playwright（�
 ```
 
 它会起页面、等 SW 接管、往 `js/store.js` 尾巴塞一个标记模拟「我改了一版」，再重开页面确认拿到新版、新内容写回了缓存、断网后仍能打开（10 项）。
+
+启动图 / 主屏图标是生成出来的，改设计后重跑一次：
+
+```powershell
+python _dev/gen-splash.py    # 需要 python + Pillow；重新出 splash/ 与 icon-*.png
+```
