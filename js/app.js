@@ -76,6 +76,32 @@
     }
   }
 
+  /* ---------------- 启动遮罩 ---------------- */
+
+  // 首屏渲染完才撤掉遮罩：宁可多看两百毫秒品牌图，也不要让人看到半张没数据的界面。
+  // 最短展示 460ms（够看清、又不像卡住）；prefers-reduced-motion 时立刻撤。
+  function hideBoot() {
+    var el = global.document.getElementById('boot');
+    if (!el) return;
+
+    var reduce = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var now = (global.performance && global.performance.now) ? global.performance.now() : 0;
+    var wait = 0;
+    if (!reduce) {
+      wait = Math.max(0, 460 - (now - (global.__bootAt || 0)));
+    }
+
+    function done() {
+      el.classList.add('is-done');
+      global.setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, reduce ? 0 : 340);
+    }
+
+    if (wait > 0) global.setTimeout(done, wait);
+    else done();
+  }
+
   /* ---------------- 启动 ---------------- */
 
   function boot() {
@@ -83,6 +109,7 @@
     SD.store.apply();
 
     render();
+    hideBoot();
 
     global.setInterval(beat, 1000);
     global.setInterval(checkDayRollover, 20000);

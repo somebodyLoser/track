@@ -534,7 +534,7 @@
 
         ui.el('div', { class: 'section-label', text: '关于' }),
         group([
-          row({ main: '版本', value: '1.3.0' }),
+          row({ main: '版本', value: '1.3.1' }),
           row({
             main: '日期计算自检',
             chevron: true,
