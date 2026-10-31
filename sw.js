@@ -12,7 +12,7 @@
  *
  * 发版时把 CACHE 的版本号 +1，旧缓存会在 activate 阶段被整体删掉。
  */
-const CACHE = 'selfdiscipline-v3';
+const CACHE = 'selfdiscipline-v4';
 
 /* 预缓存清单：index.html 里引用的全部资源。
    加文件 / 改文件名时要同步这份清单，check-desktop.js 会校验有没有漏。 */
