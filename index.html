@@ -58,5 +58,21 @@
 <script src="js/views-timeline.js"></script>
 <script src="js/views-settings.js"></script>
 <script src="js/app.js"></script>
+
+<!-- Service Worker：让 iOS 主屏幕那个图标每次打开都先跟服务器确认一次。
+     没有它的话，旧缓存会一直挡着，上传了新版手机上还是旧的（见 README「上传后手机多久生效」）。
+     file:// 双击打开时浏览器不允许注册 SW，这里用协议判断跳过，不影响本地开发。 -->
+<script>
+if ('serviceWorker' in navigator) {
+  var swSecure = location.protocol === 'https:' ||
+    location.hostname === 'localhost' ||
+    location.hostname === '127.0.0.1';
+  if (swSecure) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(function () {});
+    });
+  }
+}
+</script>
 </body>
 </html>

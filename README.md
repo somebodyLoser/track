@@ -54,7 +54,7 @@
 
 ## 部署到手机
 
-任意静态托管都行，产物就是一个文件夹（`index.html` + `css/` + `js/` + `manifest.json` + `icon.svg`）。下面两条路，选一条。
+任意静态托管都行，产物就是一个文件夹（`index.html` + `sw.js` + `css/` + `js/` + `manifest.json` + `icon.svg`）。注意 `sw.js` **必须放在根目录**（它决定 service worker 的作用范围），别漏传。下面两条路，选一条。
 
 ### 路线 A：Netlify Drop（最快，几分钟）
 
@@ -67,7 +67,7 @@
 ### 路线 B：GitHub Pages
 
 1. 新建一个仓库（Public）
-2. 把 `自律追踪` 文件夹里的这些东西上传/推送上去：`index.html`、`manifest.json`、`icon.svg`、`css/`、`js/`、`README.md`、`PLAN.md`、`_dev/`（`node_modules` 已被 `.gitignore` 排除）
+2. 把 `自律追踪` 文件夹里的这些东西上传/推送上去：`index.html`、`sw.js`、`manifest.json`、`icon.svg`、`css/`、`js/`、`README.md`、`PLAN.md`、`_dev/`（`node_modules` 已被 `.gitignore` 排除）
 3. 仓库 Settings → Pages → Source 选 `Deploy from a branch`，分支 `main`、目录 `/ (root)`，保存
 4. 等一两分钟，网址是 `https://你的用户名.github.io/仓库名/`
 5. 手机打开这个网址 → 「添加到主屏幕」
@@ -87,6 +87,25 @@
 - **Android Chrome**：右上角菜单 → 「添加到主屏幕」/「安装应用」
 
 必须加，原因见下一节。
+
+### 改了代码，手机上什么时候能看到新版
+
+以前是「看 iOS 心情」：主屏幕那个图标的独立 webview 缓存极顽固，文件都换好了手机上还是旧的，得删图标重加、甚至清网站数据（连记录一起清）。**现在有 `sw.js` 兜着，不用再折腾**。
+
+`sw.js` 是 network-first 策略的 service worker：
+
+1. 每次打开 → 先向服务器要一份最新的 `index.html` 和各个 `js/css`（带 `cache: 'no-cache'`，走 ETag 校验，没改就 304，不会白下载）
+2. 拿到新的 → 顺手写进缓存
+3. 网络不给力 / 离线 → 回落到上一次缓存的那份，页面照常打开
+
+于是：`git push` → 等 GitHub Pages 部署完（仓库 **Actions** 里那条约 30 秒~2 分钟变绿）→ 手机上**把 App 划掉重开**就是新版。
+
+几个配套细节：
+
+- 第一次带 SW 的版本，需要**加载一次**让它装上，之后才生效
+- 如果以后想强制所有人重来一遍：把 `sw.js` 顶部的 `const CACHE = 'selfdiscipline-v1'` 版本号 +1，旧缓存会在激活时被整体删掉
+- 别把策略改成 cache-first —— 那会永久卡在旧版，改完 push 都不生效
+- 本地双击 `index.html`（`file://`）不注册 SW，这是浏览器限制，不影响开发；想本地测 SW 就 `python -m http.server` 起一个
 
 ### 改了代码重新部署，数据会丢吗
 
@@ -115,6 +134,7 @@
 
 ```
 index.html            单页骨架 + 底部（宽屏是左侧）导航
+sw.js                 service worker：network-first，保证上传的新版能被手机拿到
 manifest.json         添加到主屏幕用的应用信息
 icon.svg              应用图标
 css/tokens.css        颜色、圆角、动效曲线等设计令牌（亮/暗两套）
@@ -152,7 +172,7 @@ node _dev/test-store.js     # 数据层：日期口径、连续天数、统计�
 node _dev/test-ui.js        # 界面层：四个页面渲染、记录全流程、删除、设置编辑、空状态（75 项）
 node _dev/test-multi.js     # 多项目：增删改归档、记录归属、范围过滤、统计隔离、旧数据迁移（186 项）
 node _dev/test-labels.js    # 标签增删：自定义/内置原因与场景的加、删、恢复、脏数据、历史记录不受影响（81 项）
-node _dev/check-desktop.js  # 分栏结构、手机顺序、备份提醒、manifest/图标（49 项）
+node _dev/check-desktop.js  # 分栏结构、手机顺序、备份提醒、manifest/图标、SW 注册与预缓存（62 项）
 node _dev/check-css.js      # 静态：CSS 括号配平、JS 里用到的 class 是否有定义
 node _dev/check-fresh.js    # 全新用户（localStorage 为空）首次打开看到什么
 ```
@@ -160,3 +180,12 @@ node _dev/check-fresh.js    # 全新用户（localStorage 为空）首次打开�
 这些脚本用 jsdom 真的执行 `index.html` 里的脚本，所以能抓到真实的运行时报错。`_dev` 整个目录删掉不影响使用。
 
 注意：jsdom 只能验证 DOM 结构和文案，**验证不了真实排版**。视觉调整仍然要在浏览器里看。
+
+还有一份**真浏览器**的检查——jsdom 不支持 service worker，所以「改了文件 → 重开 → 拿到新版」这条链路只能用真 Chromium 验：
+
+```powershell
+python -m http.server 8123 --bind 127.0.0.1   # 另开一个窗口
+python _dev/pwa-probe.py                       # 需要 python + playwright（这台机器已有）
+```
+
+它会起页面、等 SW 接管、往 `js/store.js` 尾巴塞一个标记模拟「我改了一版」，再重开页面确认拿到新版、新内容写回了缓存、断网后仍能打开（10 项）。
