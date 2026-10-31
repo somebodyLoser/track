@@ -12,7 +12,7 @@
 
    标签口径（1.2.0 起）：
    · 原因（REASONS）和场景（PLACES）都是内置表 + customXxx 自己加的，
-     内置的可以删（记进 hiddenXxx，可恢复默认）
+     内置的可以删（记进 hiddenXxx，删了就不再出现）
    · 删标签只动「可选项」，relapses 里已存的字符串永不改写
    ============================================================ */
 
@@ -144,7 +144,7 @@
       relapses: [],
       milestones: MILESTONES.slice(),
       // 标签（原因 / 场景）都可自由增删：
-      // customXxx = 自己加的；hiddenXxx = 被删掉的内置标签（可「恢复默认」）
+      // customXxx = 自己加的；hiddenXxx = 被删掉的内置标签（删了就不再出现）
       customReasons: [],
       customPlaces: [],
       hiddenReasons: [],
@@ -745,7 +745,8 @@
   }
 
   /* ---------------- 标签：原因 / 场景（可自由增删） ----------------
-     · 内置标签删掉时不真删，收进 hiddenXxx —— 随时能「恢复默认」
+     · 内置标签删掉时记进 hiddenXxx —— 从此不再出现在选项里，
+       界面上不提供「恢复默认」，同名标签重新加一遍就等于找回来
      · 删除只影响「可选项」，已经存进 relapses 的字符串一律不动，
        所以历史记录、统计、时间线都照旧（统计只认记录里存下的文本）
      -------------------------------------------------------------- */
@@ -796,7 +797,7 @@
     return 'added';
   }
 
-  /** 删掉一个可选项：内置的收进 hidden（可恢复），自定义的直接删。历史记录不受影响 */
+  /** 删掉一个可选项：内置的记进 hidden（不再出现），自定义的直接删。历史记录不受影响 */
   function removeLabel(kind, raw) {
     var f = labelFields(kind);
     var s = get();
@@ -815,7 +816,7 @@
     return true;
   }
 
-  /** 恢复默认标签（自定义的不动），返回放回来的个数 */
+  /** 把 hidden 清空（数据层能力，界面已无入口，只在测试与旧存档兼容里用），返回放回来的个数 */
   function resetLabels(kind) {
     var f = labelFields(kind);
     var s = get();
@@ -825,7 +826,7 @@
     return n;
   }
 
-  /** 被删掉的内置标签 —— 界面据此决定要不要显示「恢复默认」 */
+  /** 被删掉的内置标签（数据层能力，界面已经不显示这一区） */
   function hiddenLabels(kind) {
     return get()[labelFields(kind).hidden].slice();
   }

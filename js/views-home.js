@@ -439,24 +439,9 @@
 
     /* ---- 标签区的公共零件（原因 / 场景共用） ---- */
 
-    /** 标题行：左边一句说明，右边「恢复默认 / 管理」 */
+    /** 标题行：左边一句说明，右边「管理」 */
     function labelHeadRow(text, kind) {
       var acts = ui.el('div', { class: 'label-acts' });
-
-      if (st.hiddenLabels(kind).length) {
-        acts.appendChild(ui.el('button', {
-          class: 'link-btn',
-          type: 'button',
-          text: '恢复默认',
-          on: {
-            click: function () {
-              st.resetLabels(kind);
-              paint();
-              ui.toast('内置标签都放回来了');
-            }
-          }
-        }));
-      }
 
       acts.appendChild(ui.el('button', {
         class: 'link-btn' + (manage[kind] ? ' on' : ''),
@@ -482,7 +467,7 @@
       return ui.el('div', {
         class: 'hint',
         style: { 'text-align': 'left', 'margin-top': '10px' },
-        text: '现在点一下标签就是把它删掉。以前的记录里已经存下的标签不会跟着变。'
+        text: '现在点一下标签就是把它删掉，删了就没了。以前的记录里已经存下的标签不会跟着变。'
       });
     }
 

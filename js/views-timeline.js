@@ -111,7 +111,7 @@
     var st = S();
     var ui = U();
     var multi = st.habits().length > 1;
-    var owner = multi ? st.habitById(r.habitId) : null;
+    var owner = st.habitById(r.habitId);
 
     var tags = ui.el('div', { class: 'tl-tags' });
     (r.reasonTags || []).slice(0, 5).forEach(function (t) {
@@ -122,10 +122,16 @@
       class: 'tl-item',
       on: { click: function () { openDetail(r); } }
     }, [
-      ui.el('div', { class: 'tl-rail' }),
+      ui.el('div', {
+        class: 'tl-rail',
+        style: { background: owner ? 'var(--' + owner.color + ')' : 'var(--fill-3)' }
+      }),
       ui.el('div', { class: 'tl-body' }, [
         ui.el('div', { class: 'tl-top' }, [
-          owner ? ui.el('span', { class: 'tl-habit' }, [
+          (multi && owner) ? ui.el('span', {
+            class: 'tl-habit',
+            style: { background: 'color-mix(in srgb, var(--' + owner.color + ') 14%, transparent)' }
+          }, [
             ui.dot(owner.color, 'sm'),
             ui.el('span', { text: owner.name })
           ]) : null,
